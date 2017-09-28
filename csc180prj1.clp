@@ -1,7 +1,5 @@
 ;;Facts
 (deffacts timeAssumptions
-	(last fed 700)
-	(last nap 700)
 	(rules no))
 
 ;;Fuzzy Set Definition
@@ -102,7 +100,6 @@
 	(declare (salience 1))
 	(name ?name)
 	(rules yes)
-	?time <- (last fed 700)
 	?f <- (time fed yes|Yes|YES|y|Y)
 	=>
 	(printout t "So, when was the last time " ?name " was fed? ")
@@ -110,7 +107,7 @@
 	(printout t crlf)
 	(assert (last fed ?response))
 	(assert (get nap time))
-	(retract ?f ?time))
+	(retract ?f))
 
 (defrule getFeedTimeNo
 	(declare (salience 1))
@@ -118,6 +115,7 @@
 	?f <- (time fed no|No|NO|n|N)
 	=>
 	(printout t "No worries.  We'll just assume " ?name " was last fed at 7 this morning." crlf crlf)
+	(assert (last fed 700))
 	(assert (get nap time))
 	(retract ?f))
 	
@@ -137,7 +135,6 @@
 	(declare (salience 1))
 	(name ?name)
 	(rules yes)
-	?time <- (last nap 700)
 	?n <- (time nap yes|Yes|YES|y|Y)
 	=>	
 	(printout t "So, keeping the input instructions in mind," crlf)
@@ -145,7 +142,7 @@
 	(bind ?response (read))
 	(assert (last nap ?response))
 	(assert (get actual time))
-	(retract ?time ?n))
+	(retract ?n))
 	
 (defrule getNapTimeNo
 	(declare (salience 1))
@@ -154,6 +151,7 @@
 	?n <- (time nap no|No|NO|n|N)
 	=>
 	(printout t "No worries.  We'll just assume " ?name " last woke up around 7 this morning." crlf crlf)
+	(assert (last nap 700))
 	(assert (get actual time))
 	(retract ?get ?n))
 
