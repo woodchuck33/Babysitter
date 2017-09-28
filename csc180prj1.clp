@@ -35,6 +35,13 @@
 	 (L (90 0) (120 1) (150 1) (180 0))
 	 (XL (150 0) (180 1))))
 
+(deftemplate ElapsedDiaperTime
+	0 300 minutes
+	((S (30 1) (60 0))
+	 (M (30 0) (60 1) (90 1) (120 0))
+	 (L (90 0) (120 1) (150 1) (180 0))
+	 (XL (150 0) (180 1))))
+
 ;;Hunger	VH=Very Hungry
 ;;			H=Hungry
 ;;			KH=Kinda Hungry
@@ -57,7 +64,15 @@
 	 (KT (60 0) (90 1) (120 0))
 	 (NT (200 0) (240 1) (300 1))))
 
-
+;;<<UNFINISHED>>
+;;Diaper	U=Urgent
+;;			SO=Soon
+;;		    OK=Okay
+(deftemplate Diaper
+	0 150 minutes
+	((U (0 1) (10 0))
+	 (SO (0 0) (30 1) (60 1) (90 0))
+	 (OK (60 0) (90 1) (120 1) (150 0))))
 
 
 ;;Get inputs
@@ -157,6 +172,8 @@
 	(assert (get actual time))
 	(retract ?get ?n))
 
+;;Diaper Query here
+
 (defrule explainInput
 	(declare (salience 3))
 	?i <- (explain input)
@@ -191,6 +208,7 @@
 	(printout t crlf)
 	(retract ?get))
 
+;;<<UNFINISHED>>
 (defrule time-elapsed
 	?i <- (currTime ?curr)
 	?f <- (last fed ?food)
@@ -199,38 +217,46 @@
 	(assert (crispFoodTime (+ (* 60 (- (div ?curr 100) (div ?food 100))) (- (mod ?curr 100) (mod ?food 100)))))
 	(assert (crispNapTime (+ (* 60 (- (div ?curr 100) (div ?nap 100))) (- (mod ?curr 100) (mod ?nap 100)))))
 	(retract ?i ?f ?n))
-
-
+	
 
 ;;Fuzzify
 (defrule fuzzify1
 	(crispAge ?a)
 	(crispFoodTime ?f)
 	(crispNapTime ?n)
+	(cripsDiaperTime ?d)
 	=>
 	(assert (AgeGroup (?a 0) (?a 1) (?a 0)))
 	(assert (ElapsedFoodTime (?f 0) (?f 1) (?f 0)))
-	(assert (ElapsedNapTime (?n 0) (?n 1) (?n 0))))
+	(assert (ElapsedNapTime (?n 0) (?n 1) (?n 0)))
+	(assert (ElapsedDiaperTime (?d 0) (?d 1) (?d 0))))
 
 ;;defuzzify the outputs
 (defrule deffuzzify1
 	(declare (salience -1))
 	?h <- (Hunger ?)
 	?n <- (Nap ?)
+	?d <- (Diaper ?)
 	=>
 	(bind ?ht (moment-defuzzify ?h))
 	(bind ?nt (moment-defuzzify ?n))
+	(bind ?dt (moment-defuzzify ?d))
 	(assert (feed in ?ht))
-	(assert (nap in ?nt)))
+	(assert (nap in ?nt))
+	(assert (diaper in ?dt)))
 
+;;<<UNFINISHED>> NEEDS DIAPER OUTPUT
 (defrule output
 	?f<-(feed in ?food)
 	?n<-(nap in ?nap)
+	?d<-(diaper in ?diap)
 	=>
 	(printout t "Feed the child in " (div ?food 60) " hours and " (integer(mod ?food 60)) " minutes." crlf)
 	(printout t "Then make sure the child naps in " (div ?nap 60) " hours and " (integer(mod ?nap 60)) " minutes." crlf)
+	(printout t "Also, check for a diaper change in " (div ?diap 60) " hours and " (integer(mod ?diap 60)) " minutes." crlf)
 	(retract ?f)
-	(retract ?n))
+	(retract ?n)
+	(retract ?d))
 
 
 
@@ -384,3 +410,76 @@
 	(assert (Nap KT)))
 
 
+;; FAM rule definition for Diaper Change Time
+
+(defrule SId
+	(ElapsedDiaperTime S)
+	(AgeGroup I)
+	=>
+	(assert (Diaper SO)))
+
+(defrule MId
+	(ElapsedDiaperTime M)
+	(AgeGroup I)
+	=>
+	(assert (Diaper SO)))
+
+(defrule LId
+	(ElapsedDiaperTime L)
+	(AgeGroup I)
+	=>
+	(assert (Diaper U)))
+
+(defrule XLId
+	(ElapsedDiaperTime XL)
+	(AgeGroup I)
+	=>
+	(assert (Diaper U)))
+
+(defrule STd
+	(ElapsedDiaperTime S)
+	(AgeGroup T)
+	=>
+	(assert (Diaper OK)))
+
+(defrule MTd
+	(ElapsedDiaperTime M)
+	(AgeGroup T)
+	=>
+	(assert (Diaper SO)))
+
+(defrule LTd
+	(ElapsedDiaperTime L)
+	(AgeGroup T)
+	=>
+	(assert (Diaper SO)))
+
+(defrule XLTd
+	(ElapsedDiaperTime XL)
+	(AgeGroup T)
+	=>
+	(assert (Diaper U)))
+
+(defrule SYd
+	(ElapsedDiaperTime S)
+	(AgeGroup Y)
+	=>
+	(assert (Diaper OK)))
+
+(defrule MYd
+	(ElapsedDiaperTime M)
+	(AgeGroup Y)
+	=>
+	(assert (Diaper OK)))
+
+(defrule LYd
+	(ElapsedDiaperTime L)
+	(AgeGroup Y)
+	=>
+	(assert (Diaper SO)))
+
+(defrule XLYd
+	(ElapsedDiaperTime XL)
+	(AgeGroup Y)
+	=>
+	(assert (Diaper SO)))
