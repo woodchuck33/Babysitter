@@ -21,7 +21,14 @@
 ;;				M=Medium amount of time
 ;;				L=Long amount of time
 ;;				XL=Xtra Long amount of time
-(deftemplate ElapsedTime
+(deftemplate ElapsedFoodTime
+	0 300 minutes
+	((S (30 1) (60 0))
+	 (M (30 0) (60 1) (90 1) (120 0))
+	 (L (90 0) (120 1) (150 1) (180 0))
+	 (XL (150 0) (180 1))))
+
+(deftemplate ElapsedNapTime
 	0 300 minutes
 	((S (30 1) (60 0))
 	 (M (30 0) (60 1) (90 1) (120 0))
@@ -156,7 +163,7 @@
 	?r <- (rules no)
 	=>
 	(printout t "Please ensure your input is in a 24 hour format," crlf)
-	(printout t "and without a colon (i.e. 1:30 PM should be input as 1330)." crlf)
+	(printout t "and without a colon (i.e. 1:30 PM should be input as 1330)." crlf crlf)
 	(assert (rules yes))
 	(retract ?i ?r))
 
@@ -172,6 +179,7 @@
 	(get current time)
 	(rules no)
 	=>
+	(printout t "We now need to know the current time." crlf)
 	(assert (explain input)))
 	
 (defrule getCurrTime
@@ -185,22 +193,24 @@
 
 (defrule time-elapsed
 	?i <- (currTime ?curr)
-	?f <- (last food ?food)
+	?f <- (last fed ?food)
 	?n <- (last nap ?nap)
 	=>
 	(assert (crispFoodTime (+ (* 60 (- (div ?curr 100) (div ?food 100))) (- (mod ?curr 100) (mod ?food 100)))))
-	(printout t "New time is: " (* 60 (- ?time 7)) "minutes" crlf)
-	(retract ?i))
+	(assert (crispNapTime (+ (* 60 (- (div ?curr 100) (div ?nap 100))) (- (mod ?curr 100) (mod ?nap 100)))))
+	(retract ?i ?f ?n))
 
 
 
 ;;Fuzzify
 (defrule fuzzify1
 	(crispAge ?a)
-	(crispTime ?t)
+	(crispFoodTime ?f)
+	(crispNapTime ?n)
 	=>
 	(assert (AgeGroup (?a 0) (?a 1) (?a 0)))
-	(assert (ElapsedTime (?t 0) (?t 1) (?t 0))))
+	(assert (ElapsedFoodTime (?f 0) (?f 1) (?f 0)))
+	(assert (ElapsedNapTime (?n 0) (?n 1) (?n 0))))
 
 ;;defuzzify the outputs
 (defrule deffuzzify1
@@ -227,73 +237,73 @@
 ;; FAM rule definition for Hunger
 
 (defrule SIh
-	(ElapsedTime S)
+	(ElapsedFoodTime S)
 	(AgeGroup I)
 	=>
 	(assert (Hunger KH)))
 
 (defrule STh
-	(ElapsedTime S)
+	(ElapsedFoodTime S)
 	(AgeGroup T)
 	=>
 	(assert (Hunger NH)))
 
 (defrule SYh
-	(ElapsedTime S)
+	(ElapsedFoodTime S)
 	(AgeGroup Y)
 	=>
 	(assert (Hunger NH)))
 
 (defrule MIh
-	(ElapsedTime M)
+	(ElapsedFoodTime M)
 	(AgeGroup I)
 	=>
 	(assert (Hunger H)))
 
 (defrule MTh
-	(ElapsedTime M)
+	(ElapsedFoodTime M)
 	(AgeGroup T)
 	=>
 	(assert (Hunger KH)))
 
 (defrule MYh
-	(ElapsedTime M)
+	(ElapsedFoodTime M)
 	(AgeGroup Y)
 	=>
 	(assert (Hunger KH)))
 
 (defrule LIh
-	(ElapsedTime L)
+	(ElapsedFoodTime L)
 	(AgeGroup I)
 	=>
 	(assert (Hunger VH)))
 
 (defrule LTh
-	(ElapsedTime L)
+	(ElapsedFoodTime L)
 	(AgeGroup T)
 	=>
 	(assert (Hunger H)))
 
 (defrule LYh
-	(ElapsedTime L)
+	(ElapsedFoodTime L)
 	(AgeGroup Y)
 	=>
 	(assert (Hunger H)))
 
 (defrule XLIh
-	(ElapsedTime XL)
+	(ElapsedFoodTime XL)
 	(AgeGroup I)
 	=>
 	(assert (Hunger VH)))
 
 (defrule XLTh
-	(ElapsedTime XL)
+	(ElapsedFoodTime XL)
 	(AgeGroup T)
 	=>
 	(assert (Hunger VH)))
 
 (defrule XLYh
-	(ElapsedTime XL)
+	(ElapsedFoodTime XL)
 	(AgeGroup Y)
 	=>
 	(assert (Hunger VH)))
@@ -302,73 +312,73 @@
 ;;FAM rule definition for Nap Time
 
 (defrule SIn
-	(ElapsedTime S)
+	(ElapsedNapTime S)
 	(AgeGroup I)
 	=>
 	(assert (Nap T)))
 
 (defrule STn
-	(ElapsedTime S)
+	(ElapsedNapTime S)
 	(AgeGroup T)
 	=>
 	(assert (Nap NT)))
 
 (defrule SYn
-	(ElapsedTime S)
+	(ElapsedNapTime S)
 	(AgeGroup Y)
 	=>
 	(assert (Nap NT)))
 
 (defrule MIn
-	(ElapsedTime M)
+	(ElapsedNapTime M)
 	(AgeGroup I)
 	=>
 	(assert (Nap VT)))
 
 (defrule MTn
-	(ElapsedTime M)
+	(ElapsedNapTime M)
 	(AgeGroup T)
 	=>
 	(assert (Nap KT)))
 
 (defrule MYn
-	(ElapsedTime M)
+	(ElapsedNapTime M)
 	(AgeGroup Y)
 	=>
 	(assert (Nap NT)))
 
 (defrule LIn
-	(ElapsedTime L)
+	(ElapsedNapTime L)
 	(AgeGroup I)
 	=>
 	(assert (Nap VT)))
 
 (defrule LTn
-	(ElapsedTime L)
+	(ElapsedNapTime L)
 	(AgeGroup T)
 	=>
 	(assert (Nap T)))
 
 (defrule LYn
-	(ElapsedTime L)
+	(ElapsedNapTime L)
 	(AgeGroup Y)
 	=>
 	(assert (Nap KT)))
 
 (defrule XLIn
-	(ElapsedTime XL)
+	(ElapsedNapTime XL)
 	(AgeGroup I)
 	=>
 	(assert (Nap VT)))
 
 (defrule XLTn
-	(ElapsedTime XL)
+	(ElapsedNapTime XL)
 	(AgeGroup T)
 	=>
 	(assert (Nap VT)))
 
 (defrule XLYn
-	(ElapsedTime XL)
+	(ElapsedNapTime XL)
 	(AgeGroup Y)
 	=>
 	(assert (Nap KT)))
