@@ -1,0 +1,260 @@
+;;Fuzzy Set Definition
+
+;;AgeGroup	I=Infant
+;;			T=Toddler
+;;			Y=Youngster
+;;We are not using the "traditional" definition 
+;;of these age groups
+(deftemplate AgeGroup
+	0 48 months
+	((I (6 1) (16 0))
+	 (T (6 0) (16 1) (24 1) (36 0))
+	 (Y (24 0) (36 1))))
+
+;;Elapsed Time 	S=Small amount of time
+;;				M=Medium amount of time
+;;				L=Long amount of time
+;;				XL=Xtra Long amount of time
+(deftemplate ElapsedTime
+	0 300 minutes
+	((S (30 1) (60 0))
+	 (M (30 0) (60 1) (90 1) (120 0))
+	 (L (90 0) (120 1) (150 1) (180 0))
+	 (XL (150 0) (180 1))))
+
+;;Hunger	VH=Very Hungry
+;;			H=Hungry
+;;			KH=Kinda Hungry
+;;			NH=Not Hungry
+(deftemplate Hunger
+	0 150 minutes
+	((VH (0 1) (10 0))
+	 (H (0 0) (30 1) (60 0))
+	 (KH (30 0) (60 1) (90 0))
+	 (NH (60 0) (90 1) (120 1) (150 0))))
+
+;;Nap		VT=Very Tired
+;;			T=Tired
+;;			KT=Kinda Tired
+;;			NT=Not Tired
+(deftemplate Nap
+	0 300 minutes
+	((VT (0 1) (20 0))
+	 (T (0 0) (40 1) (60 0))
+	 (KT (60 0) (90 1) (120 0))
+	 (NT (200 0) (240 1) (300 1))))
+
+
+
+
+;;Get inputs
+
+(defrule introduction
+	?i <- (initial-fact)
+	=>
+	(printout t "This program is designed to aid caretakers of young children (aged 0-4 years)." crlf)
+	(printout t "You will be prompted for the child's name, age, and time of day." crlf crlf)
+	(retract ?i))
+	
+	
+	
+	;;(printout t "Before we go any farther, what is the child's name?" crlf)
+	;;(printout t "Enter age (0-48) in months: ")
+	;;(bind ?response (read))
+	;;(assert (crispAge ?response))
+	;;(printout t "Enter time (24hr clock): ")
+	;;(bind ?response (read))
+	;;(assert (currTime ?response))
+	;;(retract ?i))
+
+(defrule time-elapsed
+	?i <- (currTime ?time)
+	=>
+	(assert (crispTime (* 60 (- ?time 7))))
+	(printout t "New time is: " (* 60 (- ?time 7)) "minutes" crlf)
+	(retract ?i)
+)
+
+
+
+;;Fuzzify
+(defrule fuzzify1
+	(crispAge ?a)
+	(crispTime ?t)
+	=>
+	(assert (AgeGroup (?a 0) (?a 1) (?a 0)))
+	(assert (ElapsedTime (?t 0) (?t 1) (?t 0)))
+)
+
+;;defuzzify the outputs
+(defrule deffuzzify1
+	(declare (salience -1))
+	?h <- (Hunger ?)
+	?n <- (Nap ?)
+	=>
+	(bind ?ht (moment-defuzzify ?h))
+	(bind ?nt (moment-defuzzify ?n))
+	(assert (feed in ?ht))
+	(assert (nap in ?nt)))
+
+(defrule output
+	?f<-(feed in ?food)
+	?n<-(nap in ?nap)
+	=>
+	(printout t "Feed the child in " (div ?food 60) " hours and " (integer(mod ?food 60)) " minutes." crlf)
+	(printout t "Then make sure the child naps in " (div ?nap 60) " hours and " (integer(mod ?nap 60)) " minutes." crlf)
+	(retract ?f)
+	(retract ?n))
+
+
+
+;; FAM rule definition for Hunger
+
+(defrule SIh
+	(ElapsedTime S)
+	(AgeGroup I)
+	=>
+	(assert (Hunger KH)))
+
+(defrule STh
+	(ElapsedTime S)
+	(AgeGroup T)
+	=>
+	(assert (Hunger NH)))
+
+(defrule SYh
+	(ElapsedTime S)
+	(AgeGroup Y)
+	=>
+	(assert (Hunger NH)))
+
+(defrule MIh
+	(ElapsedTime M)
+	(AgeGroup I)
+	=>
+	(assert (Hunger H)))
+
+(defrule MTh
+	(ElapsedTime M)
+	(AgeGroup T)
+	=>
+	(assert (Hunger KH)))
+
+(defrule MYh
+	(ElapsedTime M)
+	(AgeGroup Y)
+	=>
+	(assert (Hunger KH)))
+
+(defrule LIh
+	(ElapsedTime L)
+	(AgeGroup I)
+	=>
+	(assert (Hunger VH)))
+
+(defrule LTh
+	(ElapsedTime L)
+	(AgeGroup T)
+	=>
+	(assert (Hunger H)))
+
+(defrule LYh
+	(ElapsedTime L)
+	(AgeGroup Y)
+	=>
+	(assert (Hunger H)))
+
+(defrule XLIh
+	(ElapsedTime XL)
+	(AgeGroup I)
+	=>
+	(assert (Hunger VH)))
+
+(defrule XLTh
+	(ElapsedTime XL)
+	(AgeGroup T)
+	=>
+	(assert (Hunger VH)))
+
+(defrule XLYh
+	(ElapsedTime XL)
+	(AgeGroup Y)
+	=>
+	(assert (Hunger VH)))
+
+
+;;FAM rule definition for Nap Time
+
+(defrule SIn
+	(ElapsedTime S)
+	(AgeGroup I)
+	=>
+	(assert (Nap T)))
+
+(defrule STn
+	(ElapsedTime S)
+	(AgeGroup T)
+	=>
+	(assert (Nap NT)))
+
+(defrule SYn
+	(ElapsedTime S)
+	(AgeGroup Y)
+	=>
+	(assert (Nap NT)))
+
+(defrule MIn
+	(ElapsedTime M)
+	(AgeGroup I)
+	=>
+	(assert (Nap VT)))
+
+(defrule MTn
+	(ElapsedTime M)
+	(AgeGroup T)
+	=>
+	(assert (Nap KT)))
+
+(defrule MYn
+	(ElapsedTime M)
+	(AgeGroup Y)
+	=>
+	(assert (Nap NT)))
+
+(defrule LIn
+	(ElapsedTime L)
+	(AgeGroup I)
+	=>
+	(assert (Nap VT)))
+
+(defrule LTn
+	(ElapsedTime L)
+	(AgeGroup T)
+	=>
+	(assert (Nap T)))
+
+(defrule LYn
+	(ElapsedTime L)
+	(AgeGroup Y)
+	=>
+	(assert (Nap KT)))
+
+(defrule XLIn
+	(ElapsedTime XL)
+	(AgeGroup I)
+	=>
+	(assert (Nap VT)))
+
+(defrule XLTn
+	(ElapsedTime XL)
+	(AgeGroup T)
+	=>
+	(assert (Nap VT)))
+
+(defrule XLYn
+	(ElapsedTime XL)
+	(AgeGroup Y)
+	=>
+	(assert (Nap KT)))
+
+
