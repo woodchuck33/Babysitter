@@ -367,10 +367,10 @@
 	(declare (salience 10))
 	(name ?name)
 	(or (and (crispDiaperTime ?d&:(> ?d 300))
-		(crispFoodTime ?f&:(> ?d 300))
-		(crispNapTime ?n&:(> ?d 300)))
-	     (and (crispFoodTime ?f&:(> ?d 300))
-		(crispNapTime ?n&:(> ?d 300)))
+		(crispFoodTime ?f&:(> ?f 300))
+		(crispNapTime ?n&:(> ?n 300)))
+	     (and (crispFoodTime ?f&:(> ?f 300))
+		(crispNapTime ?n&:(> ?n 300)))
 		(potty trained no))
 	=>
 	(printout t "Poor kid!" crlf)
@@ -382,8 +382,8 @@
 (defrule foodNapEmergency
 	(declare (salience 6))
 	(name ?name)
-	(and 	(crispFoodTime ?f&:(> ?d 300))
-		(crispNapTime ?n&:(> ?d 300)))
+	(and 	(crispFoodTime ?f&:(> ?f 300))
+		(crispNapTime ?n&:(> ?n 300)))
 	=>
 	(printout t "Poor kid!" crlf)
 	(printout t ?name " must be dying!  Feed them and then put them down for a nap immediately!" crlf)
@@ -508,6 +508,7 @@
 
 (defrule output3
 	(declare (salience -3))
+	(name ?name)
 	?n<-(nap in ?nap)
 	=>
 	(printout t "Finally, you should probably make sure " ?name " naps in the next " (div ?nap 60) " hours and " (integer(mod ?nap 60)) " minutes." crlf)	
