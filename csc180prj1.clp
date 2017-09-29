@@ -370,8 +370,8 @@
 		(crispFoodTime ?f&:(> ?f 300))
 		(crispNapTime ?n&:(> ?n 300)))
 	     (and (crispFoodTime ?f&:(> ?f 300))
-		(crispNapTime ?n&:(> ?n 300)))
-		(potty trained no))
+		(crispNapTime ?n&:(> ?n 300))
+		(potty trained no)))
 	=>
 	(printout t "Poor kid!" crlf)
 	(printout t ?name " must be dying!  Feed them, change their diaper, and then put them down for a nap immediately!" crlf)
