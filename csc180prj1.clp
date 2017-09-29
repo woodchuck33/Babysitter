@@ -1,12 +1,18 @@
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;;--------------------------------------------------------------------------------
 ;;Facts
+;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 ;;Only need to assume that input rules have not been displayed.
 (deffacts timeAssumptions
 	(rules no))
 
-
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ;;--------------------------------------------------------------------------------
 ;;Fuzzy Set Definition								;;
 ;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 ;;AgeGroup		I=Infant
 ;;			T=Toddler
@@ -78,6 +84,7 @@
 	 (SO (0 0) (30 1) (60 1) (90 0))
 	 (OK (60 0) (90 1) (120 1) (150 0))))
 
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ;;--------------------------------------------------------------------------------
 ;;Interactive Portion of Program						;;
 ;;	The user will be prompted for various bits of information about the 	;;
@@ -92,6 +99,7 @@
 ;;	+getDiaperTimeYes							;;
 ;;	+getCurrTime (note that, by use of salience, there is no LHS condition)	;;
 ;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 ;;Begin with an introduction to the program
 (defrule introduction
@@ -313,11 +321,23 @@
 	=>
 	(printout t "We now need to know the current time." crlf)
 	(assert (explain input)))
+
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ;;--------------------------------------------------------------------------------
-
+;;Processing									;;
+;;	The defrules of the next section process the inputs received in the 	;;
+;;previous section.  Included are some "emergency" defrules.  These defrules	;;
+;;only fire in specific cases, namely when one or more elapsed time values are	;;
+;;greater than 300min=5hours.  According to our expert, if any one of the three	;;
+;;elapsed time values, corresponding action (whether it be feeding, napping, or	;;
+;;diaper changing) must be immediately taken.  The program ends immediately if 	;;
+;;one of the emergency defrules fires and prompts the user for action.		;;
 ;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
+;;Process the elapsed time for both last feeding and last nap times.
+;;These are bundled together because every use of this program will at least have
+;;these two inputs.
 (defrule time-elapsed-Food-Nap
 	(declare (salience 11))
 	(currTime ?curr)
@@ -327,8 +347,10 @@
 	(assert (crispFoodTime (+ (* 60 (- (div ?curr 100) (div ?food 100))) (- (mod ?curr 100) (mod ?food 100)))))
 	(assert (crispNapTime (+ (* 60 (- (div ?curr 100) (div ?nap 100))) (- (mod ?curr 100) (mod ?nap 100)))))
 	(retract ?f ?n))
-
-;; diaper special case
+;;--------------------------------------------------------------------------------
+;; Special Diaper Case
+;;--------------------------------------------------------------------------------
+;;This rule only fires when the child is not potty trained. 
 (defrule time-elapsed-Diaper
 	(declare (salience 11))
 	(currTime ?curr)
@@ -336,7 +358,11 @@
 	=>
 	(assert (crispDiaperTime (+ (* 60 (- (div ?curr 100) (div ?diap 100))) (- (mod ?curr 100) (mod ?diap 100)))))
 	(retract ?d))
-
+;;--------------------------------------------------------------------------------
+;;Emergencies
+;;--------------------------------------------------------------------------------
+;;This is the king of all emergencies.  Namely that the child has not been fed, napped or 
+;;had a diaper change in over five hours.
 (defrule EMERGENCY
 	(declare (salience 10))
 	(name ?name)
@@ -345,10 +371,23 @@
 		(crispNapTime ?n&:(> ?d 300)))
 	=>
 	(printout t "Poor kid!" crlf)
-	(printout t ?name " must be dying!  Feed them, change their diaper, and the put them down for a nap immediately!" crlf)
+	(printout t ?name " must be dying!  Feed them, change their diaper, and then put them down for a nap immediately!" crlf)
 	(printout t "And next time don't wait so long until you check with this program!" crlf)
 	(halt))
-	
+
+;;This is an emergency of food AND nap
+(defrule foodNapEmergency
+	(declare (salience 6))
+	(name ?name)
+	(and 	(crispFoodTime ?f&:(> ?d 300))
+		(crispNapTime ?n&:(> ?d 300)))
+	=>
+	(printout t "Poor kid!" crlf)
+	(printout t ?name " must be dying!  Feed them and then put them down for a nap immediately!" crlf)
+	(printout t "And next time don't wait so long until you check with this program!" crlf)
+	(halt))
+
+;;This is an emergency of diaper change AND food
 (defrule diaperFoodEmergency
 	(declare (salience 6))
 	(name ?name)
@@ -360,6 +399,7 @@
 	(printout t "Please restart the program when you're finished." crlf)
 	(halt))
 	
+;;Diaper emergency
 (defrule diaperEmergency
 	(declare (salience 5))
 	(name ?name)
