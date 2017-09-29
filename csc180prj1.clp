@@ -138,10 +138,9 @@
 	?n <- (get nap time)
 	(name ?name)
 	=>
-	(printout t "Do you know what time " ?name " last woke up from a nap  (yes/no)? ")
+	(printout t "Do you know what time " ?name " last woke up from a nap (yes/no)? ")
 	(bind ?response (read))
 	(assert (time nap ?response))
-	(assert (get current time))
 	(retract ?n)
 	(printout t crlf))
 	
@@ -157,38 +156,36 @@
 	(assert (last nap ?response))
 	(assert (get PT status))
 	(retract ?n))
-
 	
 (defrule getNapTimeNo
 	(declare (salience 1))
 	(name ?name)
-	?get <- (get nap time)
 	?n <- (time nap no|No|NO|n|N)
 	=>
 	(printout t "No worries.  We'll just assume " ?name " last woke up around 7 this morning." crlf crlf)
-  (assert (last nap 700))
+	(assert (last nap 700))
 	(assert (get PT status))
-	(retract ?get ?n))
+	(retract ?n))
 
 ;; <<Diaper Query here>>
-;; <= 24 months not potty trained
+;; <= 24 months assumed to be not potty trained
 ;; older than 24 must be checked for PT status
-(defrule getPtStatus1
+(defrule getPtStatus-older
 	(declare (salience 1))
 	?r <- (get PT status)
-	(crispAge ?a)
-	(> ?a 24)
+	(crispAge ?a&:(> ?a 24))
 	=>
+	(assert (get current time))
 	(assert (get PT inquiry))
 	(retract ?r))
 
-(defrule getPtStatus2
+(defrule getPtStatus-younger
 	(declare (salience 1))
 	?r <- (get PT status)
-	(crispAge ?a)
-	(<= ?a 24)
+	(crispAge ?a&:(<= ?a 24))
 	=>
-	(assert (time diaper no))
+	(assert (get current time))
+	(assert (potty trained no))
 	(retract ?r))
 
 ;; inquire potty training
@@ -197,34 +194,41 @@
 	?n <- (get PT inquiry)
 	(name ?name)
 	=>
-	(printout t "Do you know if " ?name " is potty trained  (yes/no)? ")
+	(printout t "Is " ?name " potty trained (yes/no)? ")
 	(bind ?response (read))
-	(assert (time diaper ?response))
-	(assert (get current time))
+	(assert (potty trained ?response))
 	(retract ?n)
 	(printout t crlf))
 
-(defrule getPtYes
+(defrule pottyTNo
+	(declare (salience 1))
+	(name ?name)
+	(potty trained no|No|NO|n|N)
+	=>
+	(printout t "Do you know the last time " ?name "'s diaper was changed (yes/no)? ")
+	(bind ?response (read))
+	(assert (time diaper ?response)))
+	
+(defrule getDiaperTimeNo
+	(declare (salience 1))
+	(name ?name)
+	?n <- (time diaper no|No|NO|n|N)
+	=>
+	(printout t "No worries.  We'll just assume " ?name " last had a diaper change around 7 this morning." crlf crlf)
+	(assert (last diaper 700))
+	(retract ?n))
+	
+(defrule getDiaperTimeYes
 	(declare (salience 1))
 	(name ?name)
 	(rules yes)
 	?n <- (time diaper yes|Yes|YES|y|Y)
-	=>	
-	(assert	(?name is PT))
-	(retract ?n))
-
-(defrule getPtNo
-	declare (salience 1))
-	(name ?name)
-	?get <- (get diaper time)
-	?n <- (time diaper no|No|NO|n|N)
 	=>
 	(printout t "So, keeping the input instructions in mind," crlf)
 	(printout t "when was the last time " ?name " had a diaper change? ")
 	(bind ?response (read))
 	(assert (last diaper ?response))
-	(assert (get current time))
-	(retract ?get ?n))
+	(retract ?n))
 
 (defrule explainInput
 	(declare (salience 3))
@@ -238,7 +242,7 @@
 
 (defrule timePrompt
 	(declare (salience 1))
-	(time fed|nap yes|Yes|YES|y|Y)
+	(time fed|nap|diaper yes|Yes|YES|y|Y)
 	=>
 	(printout t "Great!  You'll now be prompted for that time." crlf)
 	(assert (explain input)))
@@ -260,25 +264,83 @@
 	(printout t crlf)
 	(retract ?get))
 
-;; <<UNFINISHED>>
-(defrule time-elapsed1
-	?i <- (currTime ?curr)
+(defrule time-elapsed-Food-Nap
+	(declare (salience 11))
+	(currTime ?curr)
 	?f <- (last fed ?food)
 	?n <- (last nap ?nap)
 	=>
 	(assert (crispFoodTime (+ (* 60 (- (div ?curr 100) (div ?food 100))) (- (mod ?curr 100) (mod ?food 100)))))
 	(assert (crispNapTime (+ (* 60 (- (div ?curr 100) (div ?nap 100))) (- (mod ?curr 100) (mod ?nap 100)))))
-	(retract ?i ?f ?n))
+	(retract ?f ?n))
 
 ;; diaper special case
-(defrule time-elapsed2
+(defrule time-elapsed-Diaper
+	(declare (salience 11))
+	(currTime ?curr)
 	?d <- (last diaper ?diap)
 	=>
-	(assert (crispDiaperTime (+ (* 60 (- (div ?curr 100) (div ?food 100))) (- (mod ?curr 100) (mod ?food 100)))))
+	(assert (crispDiaperTime (+ (* 60 (- (div ?curr 100) (div ?diap 100))) (- (mod ?curr 100) (mod ?diap 100)))))
 	(retract ?d))
+
+(defrule EMERGENCY
+	(declare (salience 10))
+	(name ?name)
+	(and (crispDiaperTime ?d&:(> ?d 300))
+		(crispFoodTime ?f&:(> ?d 300))
+		(crispNapTime ?n&:(> ?d 300)))
+	=>
+	(printout t "Poor kid!" crlf)
+	(printout t ?name " must be dying!  Feed them, change their diaper, and the put them down for a nap immediately!" crlf)
+	(printout t "And next time don't wait so long until you check with this program!" crlf)
+	(halt))
 	
+(defrule diaperFoodEmergency
+	(declare (salience 6))
+	(name ?name)
+	(and (crispDiaperTime ?d&:(> ?d 300))
+		(crispFoodTime ?f&:(> ?d 300)))
+	=>
+	(printout t "It's been a long time since " ?name " has been fed or had a diaper change." crlf)
+	(printout t "Immediately feed " ?name " something and then change their diaper." crlf)
+	(printout t "Please restart the program when you're finished." crlf)
+	(halt))
+	
+(defrule diaperEmergency
+	(declare (salience 5))
+	(name ?name)
+	(crispDiaperTime ?d&:(> ?d 300))
+	=>
+	(printout t "It's been a long time since " ?name "'s last diaper change." crlf)
+	(printout t "You should take care of that immediately and then restart the program." crlf)
+	(halt))
+	
+(defrule foodEmergency
+	(declare (salience 5))
+	(name ?name)	
+	(crispFoodTime ?f&:(> ?f 300))
+	=>
+	(printout t "It's been a long time since " ?name " was last fed." crlf)
+	(printout t "You should take care of that immediately and then restart the program." crlf)
+	(halt))
+	
+(defrule napEmergency
+	(declare (salience 5))
+	(name ?name)
+	(crispNapTime ?n&:(> ?n 300))
+	(or (and (crispAge ?a&:(<= ?a 12))
+			 (crispFoodTime ?f&:(< ?f 60)))
+		(and (crispAge ?a&:(> ?a 12))
+			 (crispFoodTime ?f&:(< ?f 180))))
+	=>
+	(printout t "It's been a long time since " ?name " napped.  Seeing as how they have eaten" crlf)
+	(printout t "recently, it would probably be a good idea to put them down for a nap." crlf)
+	(printout t "Please restart the program when " ?name " wakes up." crlf)
+	(halt))
+		
+
 ;;Fuzzify
-(defrule fuzzify1
+(defrule fuzzify-Food-Nap
 	(crispAge ?a)
 	(crispFoodTime ?f)
 	(crispNapTime ?n)
@@ -288,27 +350,24 @@
 	(assert (ElapsedNapTime (?n 0) (?n 1) (?n 0))))
 
 ;; diaper special case
-(defrule fuzzify2
-	(cripsDiaperTime ?d)
+(defrule fuzzify-Diaper
+	(crispDiaperTime ?d)
 	=>
 	(assert (ElapsedDiaperTime (?d 0) (?d 1) (?d 0))))
 
 ;;defuzzify the outputs
-(defrule deffuzzify1
+(defrule deffuzzify-Food-Nap
 	(declare (salience -1))
 	?h <- (Hunger ?)
 	?n <- (Nap ?)
-	?d <- (Diaper ?)
 	=>
 	(bind ?ht (moment-defuzzify ?h))
 	(bind ?nt (moment-defuzzify ?n))
-	(bind ?dt (moment-defuzzify ?d))
 	(assert (feed in ?ht))
-	(assert (nap in ?nt))
-	(assert (diaper in ?dt)))
+	(assert (nap in ?nt)))
 
 ;; diaper special case
-(defrule deffuzzify2
+(defrule deffuzzify-Diaper
 	(declare (salience -1))
 	?d <- (Diaper ?)
 	=>
@@ -318,18 +377,20 @@
 (defrule output1
 	?f<-(feed in ?food)
 	?n<-(nap in ?nap)
+	(name ?name)
 	=>
-	(printout t "Feed the child in " (div ?food 60) " hours and " (integer(mod ?food 60)) " minutes." crlf)
-	(printout t "Then make sure the child naps in " (div ?nap 60) " hours and " (integer(mod ?nap 60)) " minutes." crlf)
+	(printout t "Feed " ?name " in the next " (div ?food 60) " hours and " (integer(mod ?food 60)) " minutes." crlf)
+	(printout t "Then you should probably make sure " ?name " naps in the next " (div ?nap 60) " hours and " (integer(mod ?nap 60)) " minutes." crlf)
 	(retract ?f)
 	(retract ?n))
 
 ;; diaper special case
 (defrule output2
-	(declare (salience -1))
+	(declare (salience -2))
 	?d<-(diaper in ?diap)
+	(potty trained no|No|NO|n|N)
 	=>
-	(printout t "Also, check for a diaper change in " (div ?diap 60) " hours and " (integer(mod ?diap 60)) " minutes." crlf)
+	(printout t "Finally, check for a diaper change in " (div ?diap 60) " hours and " (integer(mod ?diap 60)) " minutes." crlf)
 	(retract ?d))
 
 
