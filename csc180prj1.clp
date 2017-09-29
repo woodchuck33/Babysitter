@@ -359,16 +359,19 @@
 	(assert (crispDiaperTime (+ (* 60 (- (div ?curr 100) (div ?diap 100))) (- (mod ?curr 100) (mod ?diap 100)))))
 	(retract ?d))
 ;;--------------------------------------------------------------------------------
-;;Emergencies
+;;Emergencies--Elapsed time>300 minutes
 ;;--------------------------------------------------------------------------------
 ;;This is the king of all emergencies.  Namely that the child has not been fed, napped or 
 ;;had a diaper change in over five hours.
 (defrule EMERGENCY
 	(declare (salience 10))
 	(name ?name)
-	(and (crispDiaperTime ?d&:(> ?d 300))
+	(or (and (crispDiaperTime ?d&:(> ?d 300))
 		(crispFoodTime ?f&:(> ?d 300))
 		(crispNapTime ?n&:(> ?d 300)))
+	     (and (crispFoodTime ?f&:(> ?d 300))
+		(crispNapTime ?n&:(> ?d 300)))
+		(potty trained no))
 	=>
 	(printout t "Poor kid!" crlf)
 	(printout t ?name " must be dying!  Feed them, change their diaper, and then put them down for a nap immediately!" crlf)
@@ -408,7 +411,8 @@
 	(printout t "It's been a long time since " ?name "'s last diaper change." crlf)
 	(printout t "You should take care of that immediately and then restart the program." crlf)
 	(halt))
-	
+
+;;Food emergency
 (defrule foodEmergency
 	(declare (salience 5))
 	(name ?name)	
@@ -418,6 +422,7 @@
 	(printout t "You should take care of that immediately and then restart the program." crlf)
 	(halt))
 	
+;;Nap emergency
 (defrule napEmergency
 	(declare (salience 5))
 	(name ?name)
@@ -431,9 +436,14 @@
 	(printout t "recently, it would probably be a good idea to put them down for a nap." crlf)
 	(printout t "Please restart the program when " ?name " wakes up." crlf)
 	(halt))
-		
+	
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+;;--------------------------------------------------------------------------------
+;;Fuzzify inputs								;;
+;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-;;Fuzzify
+;;Fuzzify the food and nap elapsed time vs agegroup
 (defrule fuzzify-Food-Nap
 	(crispAge ?a)
 	(crispFoodTime ?f)
@@ -448,8 +458,14 @@
 	(crispDiaperTime ?d)
 	=>
 	(assert (ElapsedDiaperTime (?d 0) (?d 1) (?d 0))))
+	
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+;;--------------------------------------------------------------------------------
+;;Defuzzify the outputs								;;
+;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 
-;;defuzzify the outputs
+;;defuzzify food and nap 
 (defrule deffuzzify-Food-Nap
 	(declare (salience -1))
 	?h <- (Hunger ?)
@@ -460,23 +476,26 @@
 	(assert (feed in ?ht))
 	(assert (nap in ?nt)))
 
-;; diaper special case
+;;defuzzify diaper special case
 (defrule deffuzzify-Diaper
 	(declare (salience -1))
 	?d <- (Diaper ?)
 	=>
 	(bind ?dt (moment-defuzzify ?d))
 	(assert (diaper in ?dt)))
+	
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+;;--------------------------------------------------------------------------------
+;;Outputs									;;
+;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 (defrule output1
 	?f<-(feed in ?food)
-	?n<-(nap in ?nap)
 	(name ?name)
 	=>
 	(printout t "Feed " ?name " in the next " (div ?food 60) " hours and " (integer(mod ?food 60)) " minutes." crlf)
-	(printout t "Then you should probably make sure " ?name " naps in the next " (div ?nap 60) " hours and " (integer(mod ?nap 60)) " minutes." crlf)
-	(retract ?f)
-	(retract ?n))
+	(retract ?f))
 
 ;; diaper special case
 (defrule output2
@@ -484,13 +503,23 @@
 	?d<-(diaper in ?diap)
 	(potty trained no|No|NO|n|N)
 	=>
-	(printout t "Finally, check for a diaper change in " (div ?diap 60) " hours and " (integer(mod ?diap 60)) " minutes." crlf)
+	(printout t "Then, check for a diaper change in " (div ?diap 60) " hours and " (integer(mod ?diap 60)) " minutes." crlf)
 	(retract ?d))
 
+(defrule output3
+	(declare (salience -3))
+	?n<-(nap in ?nap)
+	=>
+	(printout t "Finally, you should probably make sure " ?name " naps in the next " (div ?nap 60) " hours and " (integer(mod ?nap 60)) " minutes." crlf)	
+	(retract ?n))
 
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+;;--------------------------------------------------------------------------------
+;;FAMs										;;
+;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 ;; FAM rule definition for Hunger
-
 (defrule SIh
 	(ElapsedFoodTime S)
 	(AgeGroup I)
@@ -563,8 +592,9 @@
 	=>
 	(assert (Hunger VH)))
 
-
+;;--------------------------------------------------------------------------------
 ;;FAM rule definition for Nap Time
+;;--------------------------------------------------------------------------------
 
 (defrule SIn
 	(ElapsedNapTime S)
@@ -638,8 +668,9 @@
 	=>
 	(assert (Nap KT)))
 
-
+;;--------------------------------------------------------------------------------
 ;; FAM rule definition for Diaper Change Time
+;;--------------------------------------------------------------------------------
 
 (defrule SId
 	(ElapsedDiaperTime S)
