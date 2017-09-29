@@ -1,10 +1,14 @@
 ;;Facts
+;;Only need to assume that input rules have not been displayed.
 (deffacts timeAssumptions
 	(rules no))
 
-;;Fuzzy Set Definition
 
-;;AgeGroup	I=Infant
+;;--------------------------------------------------------------------------------
+;;Fuzzy Set Definition								;;
+;;--------------------------------------------------------------------------------
+
+;;AgeGroup		I=Infant
 ;;			T=Toddler
 ;;			Y=Youngster
 ;;We are not using the "traditional" definition 
@@ -15,10 +19,13 @@
 	 (T (6 0) (16 1) (24 1) (36 0))
 	 (Y (24 0) (36 1))))
 
-;;Elapsed Time 	S=Small amount of time
-;;				M=Medium amount of time
-;;				L=Long amount of time
-;;				XL=Xtra Long amount of time
+;;Elapsed Time 		S=Small amount of time
+;;			M=Medium amount of time
+;;			L=Long amount of time
+;;			XL=Xtra Long amount of time
+;;
+;;Need a different deftemplate for each of Food, Nap, and Diaper
+;;because each of them has a separate input value
 (deftemplate ElapsedFoodTime
 	0 300 minutes
 	((S (30 1) (60 0))
@@ -40,7 +47,7 @@
 	 (L (90 0) (120 1) (150 1) (180 0))
 	 (XL (150 0) (180 1))))
 
-;;Hunger	VH=Very Hungry
+;;Hunger		VH=Very Hungry
 ;;			H=Hungry
 ;;			KH=Kinda Hungry
 ;;			NH=Not Hungry
@@ -51,7 +58,7 @@
 	 (KH (30 0) (60 1) (90 0))
 	 (NH (60 0) (90 1) (120 1) (150 0))))
 
-;;Nap		VT=Very Tired
+;;Nap			VT=Very Tired
 ;;			T=Tired
 ;;			KT=Kinda Tired
 ;;			NT=Not Tired
@@ -62,17 +69,30 @@
 	 (KT (60 0) (90 1) (120 0))
 	 (NT (200 0) (240 1) (300 1))))
 
-;;Diaper	U=Urgent
+;;Diaper		U=Urgent
 ;;			SO=Soon
-;;		    OK=Okay
+;;		    	OK=Okay
 (deftemplate Diaper
 	0 150 minutes
 	((U (0 1) (10 0))
 	 (SO (0 0) (30 1) (60 1) (90 0))
 	 (OK (60 0) (90 1) (120 1) (150 0))))
 
+;;--------------------------------------------------------------------------------
+;;Interactive Portion of Program						;;
+;;	The user will be prompted for various bits of information about the 	;;
+;;child they are caring for.  The input will consist of yes/no questions (for	;;
+;;which there is minimal input validation) and prompts for various times.  The 	;;
+;;input format for times it specific and will be required to be specified before;;
+;;the user inputs anything.							;;
+;;										;;
+;;Deffrules that need the rules to be specified:				;;
+;;	+getActualFeedTime							;;
+;;	+getNapTimeYes								;;
+;;	+getDiaperTimeYes							;;
+;;	+getCurrTime (note that, by use of salience, there is no LHS condition)	;;
+;;--------------------------------------------------------------------------------
 
-;;Get inputs
 ;;Begin with an introduction to the program
 (defrule introduction
 	?i <- (initial-fact)
@@ -81,7 +101,9 @@
 	(printout t "You will be prompted for the child's name, age, and time of day." crlf crlf)
 	(assert (get name))
 	(retract ?i))
-
+;;--------------------------------------------------------------------------------
+;;Name and Age
+;;--------------------------------------------------------------------------------
 ;;Move into getting inputs
 ;;Specifically child's name and age
 (defrule getNameAge
@@ -95,8 +117,10 @@
 	(assert (crispAge ?response))
 	(assert (get feed time))
 	(retract ?g))
-
-;;Next, we will ask the user if they know the last time the baby was napped and fed
+;;--------------------------------------------------------------------------------
+;;Food
+;;--------------------------------------------------------------------------------
+;;Next, we will ask the user if they know the last time the baby fed
 (defrule getFeedTimeYN
 	(declare (salience 2))
 	?f <- (get feed time)
@@ -109,7 +133,9 @@
 	(printout t crlf)
 	(retract ?f)
 	(assert (time fed ?response)))
-	
+
+;;If they know the time the baby was fed, then get that actual time
+;;Pre-condition: Input rules explained
 (defrule getActualFeedTime	
 	(declare (salience 1))
 	(name ?name)
@@ -123,6 +149,7 @@
 	(assert (get nap time))
 	(retract ?f))
 
+;;If they don't know the time the baby was fed, assume it was at 7:00 AM
 (defrule getFeedTimeNo
 	(declare (salience 1))
 	(name ?name)
@@ -132,7 +159,10 @@
 	(assert (last fed 700))
 	(assert (get nap time))
 	(retract ?f))
-	
+;;--------------------------------------------------------------------------------
+;;Nap
+;;--------------------------------------------------------------------------------
+;;Next, ask the user if they know the last time the baby had a nap
 (defrule getNapTimeYN
 	(declare (salience 2))
 	?n <- (get nap time)
@@ -143,7 +173,9 @@
 	(assert (time nap ?response))
 	(retract ?n)
 	(printout t crlf))
-	
+
+;;If they know the time, get that time
+;;Pre-condition: Input rules explained
 (defrule getNapTimeYes
 	(declare (salience 1))
 	(name ?name)
@@ -156,7 +188,8 @@
 	(assert (last nap ?response))
 	(assert (get PT status))
 	(retract ?n))
-	
+
+;;If they don't know the time, assume it was 7:00AM
 (defrule getNapTimeNo
 	(declare (salience 1))
 	(name ?name)
@@ -166,19 +199,27 @@
 	(assert (last nap 700))
 	(assert (get PT status))
 	(retract ?n))
-
-;; <<Diaper Query here>>
-;; <= 24 months assumed to be not potty trained
+;;--------------------------------------------------------------------------------
+;;Diaper Change
+;; Next we will ask the user about the status of the baby's diaper
+;; <= 24 months assumed to be not potty trained (i.e. must ask about diaper change)
 ;; older than 24 must be checked for PT status
+;;--------------------------------------------------------------------------------
+;;If the child is older than 24 months, ask the user if the child is potty trained
 (defrule getPtStatus-older
 	(declare (salience 1))
+	(name ?name)
 	?r <- (get PT status)
 	(crispAge ?a&:(> ?a 24))
 	=>
+	(printout t "Is " ?name " potty trained (yes/no)? ")
+	(bind ?response (read))
+	(assert (potty trained ?response))
 	(assert (get current time))
-	(assert (get PT inquiry))
+	(printout t crlf)
 	(retract ?r))
 
+;;If the child is younger than 24 months, assume they are not potty trained
 (defrule getPtStatus-younger
 	(declare (salience 1))
 	?r <- (get PT status)
@@ -188,18 +229,8 @@
 	(assert (potty trained no))
 	(retract ?r))
 
-;; inquire potty training
-(defrule getPtYN
-	(declare (salience 1))
-	?n <- (get PT inquiry)
-	(name ?name)
-	=>
-	(printout t "Is " ?name " potty trained (yes/no)? ")
-	(bind ?response (read))
-	(assert (potty trained ?response))
-	(retract ?n)
-	(printout t crlf))
-
+;;If the child is not potty trained, ask the user if they know the time of the
+;;child's last diaper change
 (defrule pottyTNo
 	(declare (salience 1))
 	(name ?name)
@@ -208,7 +239,8 @@
 	(printout t "Do you know the last time " ?name "'s diaper was changed (yes/no)? ")
 	(bind ?response (read))
 	(assert (time diaper ?response)))
-	
+
+;;If the user does not know the time, assume it was 7:00AM
 (defrule getDiaperTimeNo
 	(declare (salience 1))
 	(name ?name)
@@ -217,7 +249,9 @@
 	(printout t "No worries.  We'll just assume " ?name " last had a diaper change around 7 this morning." crlf crlf)
 	(assert (last diaper 700))
 	(retract ?n))
-	
+
+;;If the user does know the time, prompt them for it
+;;Pre-Condition: Input rules explained
 (defrule getDiaperTimeYes
 	(declare (salience 1))
 	(name ?name)
@@ -229,7 +263,26 @@
 	(bind ?response (read))
 	(assert (last diaper ?response))
 	(retract ?n))
-
+;;--------------------------------------------------------------------------------
+;;Current Time
+;;--------------------------------------------------------------------------------
+;;Get the current time of day.  This defrule has a lower salience than all of the
+;;other defrules designed to get input.  As such, it will run last.
+(defrule getCurrTime
+	?get <- (get current time)
+	=>
+	(printout t "Keeping the input instructions in mind, what is the current time? ")
+	(bind ?response (read))
+	(assert (currTime ?response))
+	(printout t crlf)
+	(retract ?get))
+	
+;;--------------------------------------------------------------------------------
+;;Utility Rules
+;;--------------------------------------------------------------------------------
+;;Various rules will assert (explain input) which means that the user is about
+;;to be prompted for a time input.  As such, they need to have had the rules
+;;explained.  Along with the (initial-fact), (rules no) is asserted at the (reset).
 (defrule explainInput
 	(declare (salience 3))
 	?i <- (explain input)
@@ -240,13 +293,19 @@
 	(assert (rules yes))
 	(retract ?i ?r))
 
+;;If the user ever responds to a prompt "Do you know the last time..." with a "yes",
+;;they will be directed here.  This defrule will also funnel the program through
+;;the explainInput defrule by asserting (explain input)
 (defrule timePrompt
 	(declare (salience 1))
 	(time fed|nap|diaper yes|Yes|YES|y|Y)
 	=>
 	(printout t "Great!  You'll now be prompted for that time." crlf)
 	(assert (explain input)))
-	
+
+;;It is possible for the user to respond "no" to each of the "Do you know..." questions.
+;;As such, it is possible that they do not know the input rules by the time they
+;;need to input the current time.  This rule ensures that they see the rules.
 (defrule inputRuleCheck
 	(declare (salience 1))
 	(get current time)
@@ -254,15 +313,10 @@
 	=>
 	(printout t "We now need to know the current time." crlf)
 	(assert (explain input)))
-	
-(defrule getCurrTime
-	?get <- (get current time)
-	=>
-	(printout t "Keeping the input instructions in mind, what is the current time? ")
-	(bind ?response (read))
-	(assert (currTime ?response))
-	(printout t crlf)
-	(retract ?get))
+;;--------------------------------------------------------------------------------
+
+;;--------------------------------------------------------------------------------
+
 
 (defrule time-elapsed-Food-Nap
 	(declare (salience 11))
