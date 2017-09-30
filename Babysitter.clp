@@ -1,3 +1,22 @@
+;;Authors: 	Joe Ezaki (Section 1)
+;;		Stephen Zech (Section 2)
+;;Class: 	CSC180
+;;Instructor:	Dr. Gordon
+;;Date:		9.29.17
+;;
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;;--------------------------------------------------------------------------------
+;;Babysitter.clp								;;
+;;	This program is designed for use by somebody taking care of a young 	;;
+;;child (0-48 months).  The user will be prompted for and input the last time	;;
+;;the child was fed, napped, and had a diaper change.  From that input, the 	;;
+;;program will use fuzzy logic to determine a time range during which the child ;;
+;;should be fed, napped, and have their diaper changed.  Each of those tasks 	;;
+;;will have its own time range.							;;
+;;--------------------------------------------------------------------------------
+;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 ;;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ;;--------------------------------------------------------------------------------
 ;;Facts
