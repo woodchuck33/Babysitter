@@ -747,3 +747,14 @@
 	(AgeGroup Y)
 	=>
 	(assert (Diaper SO)))
+
+;;Handles negative elapsed time
+(defrule childServices
+	(declare (salience 99))
+	(or (crispFoodTime ?f&:(< ?f 0))
+		(crispNapTime	?n&:(< ?n 0))
+		(crispDiaperTime ?d&:(< ?d 0)))
+	=>
+	(printout t "So you haven't taken care of your child since yesterday?" crlf)
+	(printout t "CPS has been contacted." crlf)
+	(halt))
