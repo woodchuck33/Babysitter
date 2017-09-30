@@ -299,6 +299,7 @@
 ;;Get the current time of day.  This defrule has a lower salience than all of the
 ;;other defrules designed to get input.  As such, it will run last.
 (defrule getCurrTime
+	(declare (salience -1))
 	?get <- (get current time)
 	=>
 	(printout t "Keeping the input instructions in mind, what is the current time? ")
@@ -337,7 +338,6 @@
 ;;As such, it is possible that they do not know the input rules by the time they
 ;;need to input the current time.  This rule ensures that they see the rules.
 (defrule inputRuleCheck
-	(declare (salience 1))
 	(get current time)
 	(rules no)
 	=>
