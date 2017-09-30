@@ -195,6 +195,7 @@
 	(bind ?response (read))
 	(assert (last nap ?response))
 	(assert (get PT status))
+	(printout t crlf)
 	(retract ?n))
 
 ;;If they don't know the time, assume it was 7:00AM
@@ -246,6 +247,7 @@
 	=>
 	(printout t "Do you know the last time " ?name "'s diaper was changed (yes/no)? ")
 	(bind ?response (read))
+	(printout t crlf)
 	(assert (time diaper ?response)))
 
 ;;If the user does not know the time, assume it was 7:00AM
@@ -270,6 +272,7 @@
 	(printout t "when was the last time " ?name " had a diaper change? ")
 	(bind ?response (read))
 	(assert (last diaper ?response))
+	(printout t crlf)
 	(retract ?n))
 ;;--------------------------------------------------------------------------------
 ;;Current Time
